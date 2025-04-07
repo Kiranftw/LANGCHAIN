@@ -75,15 +75,37 @@ class Model():
         prompt = self.promptTemplate.format_messages(topic="jesus", count="3")
     
     def chains(self):
-       promptTemplate = ChatPromptTemplate.from_messages(
+       self.promptTemplate = ChatPromptTemplate.from_messages(
            [
                ("system", """you are actually facts expert give me some facts
                this {animal}."""),
                ("human", """tell me about this {number} of facts.""")
            ])
-       chain = promptTemplate | self.LLM | StrOutputParser()
+       chain = self.promptTemplate | self.LLM | StrOutputParser()
        result = chain.invoke({"animal" : "lion", "number" : 2})
        print(result)
    
+    def chainInnerWorking(self):
+        formatedPrompt = RunnableLambda(lambda x: self.promptTemplate.format(x))
+        invokeModel = RunnableLambda(lambda x: self.LLM.invoke(x.to_messages()))
+        parseOutput = RunnableLambda(lambda x: x.content)
+
+        chain = RunnableSequence(
+            first=formatedPrompt,
+            middle=[invokeModel],
+            last=parseOutput
+        )
+        
+        result = chain.invoke({"animal": "lion"})
+        print(result)
+    
+    def firebase(self):
+        pass
+        """
+        Firebase connection is complicated and I will do it later.
+        """
+     
 if __name__ == "__main__":
-    Model().chains()
+    object = Model()
+    object.chains()
+    object.chainInnerWorking()

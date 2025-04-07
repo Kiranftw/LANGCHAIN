@@ -19,9 +19,8 @@ summaryTemplate = ChatPromptTemplate.from_messages(
         ("system", """you are a movie critic."""),
         ("human", """give me a summary of the movie {movie}""")
     ])
-summary = summaryTemplate | LLM
 
-def analyzePlot(plot):
+def analyzePlot(movie):
     prompt = ChatPromptTemplate.from_messages(
         [   
             ("system", """you are a movie critic."""),
@@ -29,7 +28,7 @@ def analyzePlot(plot):
         ]
     )
     chain = prompt | LLM | StrOutputParser()
-    return chain.invoke({"plot": plot})
+    return chain.invoke({"plot": movie})
 
 
 def analyzeCharacter(character):
