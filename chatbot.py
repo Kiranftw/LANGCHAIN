@@ -52,7 +52,7 @@ class CHATBOT(object):
         response = self.conversation.predict(input=Query)
         return response
     
-    def chatstream(self, Query: str) -> str:
+    def chatstream(self, Query: str) -> None:
         print("\n[Bot]: ", end="", flush=True)
         response = ""
         buffer = ""
@@ -60,16 +60,17 @@ class CHATBOT(object):
         messages = self.memory.chat_memory.messages.copy()
         messages.append(HumanMessage(content = Query))
         for chunk in self._LLM.stream(messages):
-            print(chunk.content, end="", flush=True)
-            buffer += chunk.content
-            response += chunk.content
-
-            if time.time() - LASTFLUSH > 0.10:
+            if chunk.content: # check if chunk.content is not None or empty
                 print(chunk.content, end="", flush=True)
-                buffer = ""
-                LASTFLUSH = time.time()
-                
-        print(buffer)
+                buffer += chunk.content
+                response += chunk.content
+
+                if time.time() - LASTFLUSH > 0.10:
+                    #print(chunk.content, end="", flush=True) # removed this line as it was printing twice
+                    buffer = ""
+                    LASTFLUSH = time.time()
+
+        print(buffer) # print the remaining buffer
         self.memory.chat_memory.add_user_message(Query)
         self.memory.chat_memory.add_ai_message(response)
         PMarkdown(response)
@@ -82,4 +83,3 @@ if __name__ == "__main__":
         if prompt.lower() in ("exit", "quit"):
             break
         bot.chatstream(prompt)
-
