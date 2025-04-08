@@ -24,7 +24,6 @@ def ExceptionHandelling(func) -> object:
             print(f"Exception Occured {E}")
     return wrapper
 
-
 class RunnableCHATBOT(object):
     load_dotenv(find_dotenv())
     @ExceptionHandelling
@@ -136,7 +135,7 @@ if __name__ == "__main__":
         while True:
             prompt = input("\n[You]: ")
             if prompt.lower() == "exit":
-                print("👋 Ending session and clearing memory...\n")
+                print("Ending session and clearing memory...\n")
                 chatbot.memory.clear() 
                 break
 
