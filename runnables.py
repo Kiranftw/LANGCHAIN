@@ -2,11 +2,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema.output_parser import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.memory import ConversationSummaryBufferMemory
+from langchain_community.document_loaders import PyMuPDFLoader
 from langchain.chains import ConversationChain
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 import google.generativeai as genai
 from dotenv import load_dotenv, find_dotenv
 import os
-import time
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from functools import wraps
 from IPython.display import Markdown, display
@@ -52,6 +53,7 @@ class RunnableCHATBOT(object):
             memory = self.memory,
             verbose = True
         )
+        self.corpus = ""
 
     @ExceptionHandelling
     def getResponse(self, Query: str) -> str:
@@ -75,31 +77,68 @@ class RunnableCHATBOT(object):
     
     @ExceptionHandelling
     def withMemory(self, Query: str) -> str:
-        print("\n[Bot]: ", end="", flush=True)
-        response = ""
-        buffer = ""
-        lastflush = time.time()
+        print("\n[Bot]: ", end="", flush=True)  # Print the initial prompt
+        response = ""  # Initialize the response string
         messages = self.memory.chat_memory.messages.copy()
-        messages.append(HumanMessage(content = Query))
+        messages.append(HumanMessage(content=Query))
         for chunk in self.model.stream(messages):
             if chunk.content:
-                print(chunk.content, end="", flush=True)
-                buffer += chunk.content
-                response += chunk.content
+                print(chunk.content, end="", flush=True)  # Print each chunk immediately
+                response += chunk.content  # Accumulate the response
+        
+        print()
 
-                if time.time() - lastflush > 0.87:
-                    buffer = ""
-                    lastflush = time.time()
-        print(buffer)
         self.memory.chat_memory.add_user_message(Query)
         self.memory.chat_memory.add_ai_message(response)
         PMarkdown(response)
         return response
+    
+    @ExceptionHandelling
+    def pdfchatbot(self, Document: str, Query: str) -> str:
+        loader = PyMuPDFLoader(Document)
+        documents = loader.load()
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        texts = text_splitter.split_documents(documents)
+        
+        # Combine all text chunks into a single string
+        combined_text = " ".join([doc.page_content for doc in texts])
+        
+        self.memory.chat_memory.add_user_message(combined_text)
+        self.memory.chat_memory.add_ai_message("Document Loaded Successfully")
+        
+        if Query:
+            print("\n[Bot]: ", end="", flush=True)
+            response = ""
+            messages = self.memory.chat_memory.messages.copy()
+            messages.append(HumanMessage(content=Query))
+            for chunk in self.model.stream(messages):
+                if chunk.content:
+                    print(chunk.content, end="", flush=True)
+                    response += chunk.content
+            print()
+            self.memory.chat_memory.add_user_message(Query)
+            self.memory.chat_memory.add_ai_message(response)
+            PMarkdown(response)
+            return response
+        else:
+            return "Document Loaded Successfully"
 
 if __name__ == "__main__":
     chatbot = RunnableCHATBOT()
+
     while True:
-        prompt = input("\n[You]: ")
-        if prompt.lower() in ("exit", "quit"):
+        document = input("Enter the PDF document path (or 'exit' to quit): ")
+        if document.lower() == "exit":
             break
-        chatbot.withMemory(prompt)
+
+        chatbot.pdfchatbot(Document=document, Query="") 
+
+        while True:
+            prompt = input("\n[You]: ")
+            if prompt.lower() == "exit":
+                print("👋 Ending session and clearing memory...\n")
+                chatbot.memory.clear() 
+                break
+
+            chatbot.pdfchatbot(Document=document, Query=prompt)
+
